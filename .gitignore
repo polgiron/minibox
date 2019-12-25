@@ -1,5 +1,6 @@
 # See http://help.github.com/ignore-files/ for more about ignoring files.
 
+.cache-alpaminibox@gmail.com
 minibox/__pycache__
 .DS_Store
 Thumbs.db

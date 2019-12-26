@@ -6,20 +6,16 @@ max_rows, max_columns = os.popen('stty size', 'r').read().split()
 MAX_ROWS = int(max_rows) - 2
 MAX_COLUMNS = int(max_columns)
 
+# UPDATE_INTERVAL = 0.1
 
 sp = Spotify()
 
 
-def unhandled_input(key):
-    # queue_list_walker.append(ListEntry(key))
+class Model:
+    results = []
+    queue = []
 
-    if key in ('q', 'Q'):
-        raise urwid.ExitMainLoop()
-
-
-palette = [
-    ('reverted', 'black', 'white')
-]
+    # def __init__(self):
 
 
 class ButtonLabel(urwid.SelectableIcon):
@@ -42,12 +38,12 @@ class Button(urwid.WidgetWrap):
     def keypress(self, size, key):
         if self._command_map[key] != urwid.ACTIVATE:
             return key
-
         self._emit('click')
 
 
 class TrackListEntry():
-    def __init__(self, track):
+    def __init__(self, track, currently_playing):
+        self.currently_playing = currently_playing
         if track.get('track'):
             track = track['track']
         else:
@@ -60,69 +56,92 @@ class TrackListEntry():
         self.uri = track['uri']
         self.label = self.artists + ' - ' + self.name
 
-    def play_track(self, button_widget):
-        # print(self.name + ' - ' + self.uri)
-        track_playing.set_text(self.label)
-        sp.play_track(self.uri)
+    def play(self, button_widget):
+        self.currently_playing.set_text(self.label)
+        sp.play(self.uri)
 
-    def add_ui(self, wrapper):
-        # print('Add track to list')
-        wrapper.append(Button(self.label, self.play_track))
+    def button(self):
+        return Button(self.label, self.play)
 
 
-class Search(urwid.LineBox):
+class SearchInput(urwid.LineBox):
+    signals = ['enter']
+
     def keypress(self, size, key):
         if key != 'enter':
-            return super(Search, self).keypress(size, key)
-        self.search(self.original_widget.edit_text)
-    
+            return super(SearchInput, self).keypress(size, key)
+        self._emit('enter')
+
+
+class View(urwid.WidgetWrap):
+    palette = [
+        ('reverted', 'black', 'white')
+    ]
+
+    def __init__(self, controller):
+        self.controller = controller
+        # self.search_input = SearchInput(urwid.Edit(
+        #     ''), title='Search', title_align='left')
+        urwid.WidgetWrap.__init__(self, self.main_window())
+
+    def on_search_input_keypress(self, search_input):
+        self.controller.search(search_input.original_widget.edit_text)
+
+    def search_input(self):
+        w = SearchInput(urwid.Edit(''), title='Search', title_align='left')
+        urwid.connect_signal(w, 'enter', self.on_search_input_keypress)
+        return w
+
+    def update_search_results(self, results):
+        self.search_results_walker.clear()
+        for i, track in enumerate(results):
+            track_entry = TrackListEntry(track, self.currently_playing)
+            self.search_results_walker.append(track_entry.button())
+
+    # def exit_program(self, w):
+        # raise urwid.ExitMainLoop()
+
+    def main_window(self):
+        # Search results
+        self.search_results_walker = urwid.SimpleListWalker([])
+        search_results_list = urwid.ListBox(self.search_results_walker)
+        search_results_wrapper = urwid.LineBox(urwid.BoxAdapter(
+            search_results_list, MAX_ROWS - 6), title='Search results', title_align='left')
+
+        # Currently playing
+        self.currently_playing = urwid.Text(('No track playing'))
+        currently_playing_wrapper = urwid.LineBox(
+            self.currently_playing, title='Currently playing', title_align='left')
+
+        # Right
+        right = urwid.Pile(
+            [self.search_input(), search_results_wrapper, currently_playing_wrapper])
+
+        # Main wrapper
+        w = urwid.Filler(right, valign='top')
+        return w
+
+
+class Controller:
+    def __init__(self):
+        self.model = Model()
+        self.view = View(self)
+
     def search(self, search_value):
         results = sp.search(search_value)
-        add_tracks(results, search_results_walker)
+        self.view.update_search_results(results)
 
+    # def play(self, what):
+    #     # print(what)
+    #     # track.play()
+    #     self.view.currently_playing.set_text('track.label')
 
-
-def add_tracks(tracks, wrapper):
-    for i, track in enumerate(tracks):
-        trackEntry = TrackListEntry(track)
-        trackEntry.add_ui(wrapper)
-
-
-# LEFT
-queue_list_walker = urwid.SimpleFocusListWalker([])
-queue_list = urwid.ListBox(queue_list_walker)
-queue_wrapper = urwid.LineBox(urwid.BoxAdapter(
-    queue_list, MAX_ROWS), title='Queue', title_align='left')
-
-# SEARCH
-search_wrapper = Search(urwid.Edit(''), title='Search', title_align='left')
-search_results_walker = urwid.SimpleFocusListWalker([])
-search_results_list = urwid.ListBox(search_results_walker)
-search_results_wrapper = urwid.LineBox(urwid.BoxAdapter(
-    search_results_list, MAX_ROWS - 6), title='Search results', title_align='left')
-# search_results_wrapper = SearchResults(urwid.BoxAdapter(
-#     search_results_list, MAX_ROWS - 6), title='Search results', title_align='left')
-
-track_playing = urwid.Text(('No track playing'))
-track_playing_wrapper = urwid.LineBox(
-    track_playing, title='Currently playing', title_align='left')
-right = urwid.Pile(
-    [search_wrapper, search_results_wrapper, track_playing_wrapper])
-
-columns = urwid.Columns([
-    ('weight', 1, queue_wrapper),
-    ('weight', 3, right)
-])
-main_wrapper = urwid.Filler(columns, valign='top')
+    def main(self):
+        self.loop = urwid.MainLoop(self.view, self.view.palette)
+        self.loop.run()
 
 
 def main():
     sp.init()
-    sp.get_devices()
-
-    tracks = sp.get_playlist_tracks()
-    add_tracks(tracks, queue_list_walker)
-
-    loop = urwid.MainLoop(main_wrapper, palette,
-                          unhandled_input=unhandled_input)
-    loop.run()
+    # sp.get_devices()
+    Controller().main()

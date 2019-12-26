@@ -41,7 +41,7 @@ class Spotify():
         tracks = self.sp.user_playlist_tracks('feuquibrule', playlist_id)
         return tracks['items']
 
-    def play_track(self, track_uri):
+    def play(self, track_uri):
         device_id = '1670ecb14c549253cb5ac572c99706373b1712f9'
         self.sp.start_playback(device_id, None, [track_uri])
 

@@ -1,6 +1,7 @@
 import os
 import urwid
 from .spotify import Spotify
+from enum import Enum
 
 max_rows, max_columns = os.popen('stty size', 'r').read().split()
 MAX_ROWS = int(max_rows) - 2
@@ -11,11 +12,21 @@ MAX_COLUMNS = int(max_columns)
 sp = Spotify()
 
 
-class Model:
-    results = []
-    queue = []
+class PlayerState(Enum):
+    PAUSED = 1
+    PLAYING = 2
 
-    # def __init__(self):
+
+class Model:
+    # results = []
+    # queue = []
+    player_state = PlayerState['PAUSED']
+
+    def get_player_state(self):
+        return self.player_state
+
+    def set_player_state(self, state):
+        self.player_state = state
 
 
 class ButtonLabel(urwid.SelectableIcon):
@@ -42,8 +53,8 @@ class Button(urwid.WidgetWrap):
 
 
 class TrackListEntry():
-    def __init__(self, track, currently_playing):
-        self.currently_playing = currently_playing
+    def __init__(self, controller, track):
+        self.controller = controller
         if track.get('track'):
             track = track['track']
         else:
@@ -56,9 +67,8 @@ class TrackListEntry():
         self.uri = track['uri']
         self.label = self.artists + ' - ' + self.name
 
-    def play(self, button_widget):
-        self.currently_playing.set_text(self.label)
-        sp.play(self.uri)
+    def play(self, button_instance):
+        self.controller.play(self)
 
     def button(self):
         return Button(self.label, self.play)
@@ -95,11 +105,14 @@ class View(urwid.WidgetWrap):
     def update_search_results(self, results):
         self.search_results_walker.clear()
         for i, track in enumerate(results):
-            track_entry = TrackListEntry(track, self.currently_playing)
+            track_entry = TrackListEntry(self.controller, track)
             self.search_results_walker.append(track_entry.button())
 
-    # def exit_program(self, w):
-        # raise urwid.ExitMainLoop()
+    def on_click_play_button(self, button_instance):
+        self.controller.update_player_state()
+
+    # def play_button(self):
+        # w = Button('Play', self.on_click_play_button)
 
     def main_window(self):
         # Search results
@@ -108,14 +121,24 @@ class View(urwid.WidgetWrap):
         search_results_wrapper = urwid.LineBox(urwid.BoxAdapter(
             search_results_list, MAX_ROWS - 6), title='Search results', title_align='left')
 
-        # Currently playing
+        # Bottom
+        # play_button = urwid.Button('Play', self.on_click_play_button)
         self.currently_playing = urwid.Text(('No track playing'))
-        currently_playing_wrapper = urwid.LineBox(
-            self.currently_playing, title='Currently playing', title_align='left')
+        self.player_state = urwid.Text((''))
+        # controls = urwid.GridFlow([
+        #     # pause_button,
+        #     play_button
+        # ], 9, 2, 0, 'left')
+        bottom = urwid.Columns([
+            ('fixed', 10, self.player_state),
+            self.currently_playing
+        ])
+        bottom = urwid.LineBox(
+            bottom, title='Player', title_align='left')
 
         # Right
         right = urwid.Pile(
-            [self.search_input(), search_results_wrapper, currently_playing_wrapper])
+            [self.search_input(), search_results_wrapper, bottom])
 
         # Main wrapper
         w = urwid.Filler(right, valign='top')
@@ -126,18 +149,31 @@ class Controller:
     def __init__(self):
         self.model = Model()
         self.view = View(self)
+        self.update_player_state(PlayerState.PAUSED)
 
     def search(self, search_value):
         results = sp.search(search_value)
         self.view.update_search_results(results)
 
-    # def play(self, what):
-    #     # print(what)
-    #     # track.play()
-    #     self.view.currently_playing.set_text('track.label')
+    def update_player_state(self, state):
+        self.model.player_state = state
+        self.view.player_state.set_text(state.name)
+
+    def update_currently_playing(self, label):
+        self.view.currently_playing.set_text(label)
+
+    def play(self, track):
+        self.update_currently_playing(track.label)
+        sp.play(track.uri)
+        self.update_player_state(PlayerState.PLAYING)
+    
+    def unhandled_input(self, key):
+        if key in ('q', 'Q'):
+            raise urwid.ExitMainLoop()
 
     def main(self):
-        self.loop = urwid.MainLoop(self.view, self.view.palette)
+        self.loop = urwid.MainLoop(
+            self.view, self.view.palette, unhandled_input=self.unhandled_input)
         self.loop.run()
 
 

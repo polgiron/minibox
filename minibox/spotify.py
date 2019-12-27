@@ -14,6 +14,7 @@ class Spotify():
     SCOPE = 'user-library-read,user-read-playback-state,streaming,user-modify-playback-state,user-read-currently-playing'
     # USERNAME = 'feuquibrule'
     USERNAME = 'alpaminibox@gmail.com'
+    DEVICE_ID = '1670ecb14c549253cb5ac572c99706373b1712f9'
 
     # def __init__(self):
         # self.hello = 'Hello self'
@@ -42,10 +43,12 @@ class Spotify():
         return tracks['items']
 
     def play(self, track_uri):
-        device_id = '1670ecb14c549253cb5ac572c99706373b1712f9'
-        self.sp.start_playback(device_id, None, [track_uri])
+        self.sp.start_playback(self.DEVICE_ID, None, [track_uri])
+
+    def pause(self):
+        self.sp.pause_playback(self.DEVICE_ID)
 
     def search(self, search_value):
-        results = self.sp.search(q='artist:' + search_value, type='track')
+        results = self.sp.search(q='artist:' + search_value, limit=20, type='track')
         # print(results['tracks']['items'])
         return results['tracks']['items']

@@ -39,12 +39,13 @@ class Button(urwid.WidgetWrap):
     _selectable = True
     signals = ['click']
 
-    def __init__(self, label, callback):
+    def __init__(self, label, callback, callback_argument):
         self.label = ButtonLabel(label)
         display_widget = self.label
         urwid.WidgetWrap.__init__(self, urwid.AttrMap(
             display_widget, None, focus_map='reverted'))
-        urwid.connect_signal(self, 'click', callback)
+        urwid.connect_signal(self, 'click', callback,
+                             user_args=[callback_argument])
 
     def keypress(self, size, key):
         if self._command_map[key] != urwid.ACTIVATE:
@@ -67,11 +68,8 @@ class TrackListEntry():
         self.uri = track['uri']
         self.label = self.artists + ' - ' + self.name
 
-    def play(self, button_instance):
-        self.controller.play(self)
-
     def button(self):
-        return Button(self.label, self.play)
+        return Button(self.label, self.controller.on_track_click, self)
 
 
 class SearchInput(urwid.LineBox):
@@ -114,7 +112,24 @@ class View(urwid.WidgetWrap):
     # def play_button(self):
         # w = Button('Play', self.on_click_play_button)
 
+    def track_options_overlay(self, track):
+        play_button = Button('Play', self.controller.play, track)
+        add_to_queue_button = Button('Add to queue', self.controller.add_to_queue, track)
+        overlay_walker = urwid.SimpleListWalker([
+            add_to_queue_button,
+            play_button
+        ])
+        overlay_list = urwid.ListBox(overlay_walker)
+        overlay = urwid.LineBox(urwid.BoxAdapter(
+            overlay_list, 2), title='Track options', title_align='center')
+        overlay = urwid.Overlay(
+            urwid.Filler(overlay), self, 'center', 20, 'middle', 4)
+        return overlay
+
     def main_window(self):
+        # Overlay
+        # self.overlay = self.track_options_overlay()
+
         # Search results
         self.search_results_walker = urwid.SimpleListWalker([])
         search_results_list = urwid.ListBox(self.search_results_walker)
@@ -142,6 +157,7 @@ class View(urwid.WidgetWrap):
 
         # Main wrapper
         w = urwid.Filler(right, valign='top')
+
         return w
 
 
@@ -162,11 +178,20 @@ class Controller:
     def update_currently_playing(self, label):
         self.view.currently_playing.set_text(label)
 
-    def play(self, track):
+    def on_track_click(self, track, button_instance):
+        overlay = self.view.track_options_overlay(track)
+        self.loop.widget = overlay
+
+    def play(self, track, button_instance):
         self.update_currently_playing(track.label)
         sp.play(track.uri)
         self.update_player_state(PlayerState.PLAYING)
-    
+        self.loop.widget = self.view
+
+    def add_to_queue(self, track, button_instance):
+        print('Add to queue: ' + track.uri)
+        self.loop.widget = self.view
+
     def unhandled_input(self, key):
         if key in ('q', 'Q'):
             raise urwid.ExitMainLoop()

@@ -21,7 +21,10 @@ pip install virtualenv
 ```
 2. Create the venv 
 ```
+# Pour python 2:
 virtualenv venv
+# Pour python 3:
+virtualenv -p python3 venv
 ```
 3. Start it 
 ```
@@ -43,7 +46,7 @@ deactivate
 ```
 
 ### Run the tests and build a python package
-1. Install tox 
+1. Install tox
 ```
 pip install tox
 ```

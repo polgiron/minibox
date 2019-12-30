@@ -4,3 +4,9 @@
 minibox/__pycache__
 .DS_Store
 Thumbs.db
+.idea/
+.tox/
+venv/
+dist/
+minibox.egg-info/
+build/

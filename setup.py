@@ -13,7 +13,8 @@ setup(
         '': ['*.avsc'],
     },
     install_requires=[
-        'urwid'
+        'urwid',
+        'spotipy'
     ],
     entry_points={
         'console_scripts': [

@@ -100,21 +100,33 @@ class View(urwid.WidgetWrap):
         urwid.connect_signal(w, 'enter', self.on_search_input_keypress)
         return w
 
+    def search_results(self):
+        self.search_results_walker = urwid.SimpleListWalker([])
+        search_results_list = urwid.ListBox(self.search_results_walker)
+        search_results_wrapper = urwid.LineBox(urwid.BoxAdapter(
+            search_results_list, MAX_ROWS - 6), title='Search results', title_align='left')
+        return search_results_wrapper
+
+    def player(self):
+        self.currently_playing = urwid.Text(('No track playing'))
+        self.player_state = urwid.Text((''))
+        player = urwid.Columns([
+            ('fixed', 10, self.player_state),
+            self.currently_playing
+        ])
+        player = urwid.LineBox(player, title='Player', title_align='left')
+        return player
+
     def update_search_results(self, results):
         self.search_results_walker.clear()
         for i, track in enumerate(results):
             track_entry = TrackListEntry(self.controller, track)
             self.search_results_walker.append(track_entry.button())
 
-    def on_click_play_button(self, button_instance):
-        self.controller.update_player_state()
-
-    # def play_button(self):
-        # w = Button('Play', self.on_click_play_button)
-
     def track_options_overlay(self, track):
         play_button = Button('Play', self.controller.play, track)
-        add_to_queue_button = Button('Add to queue', self.controller.add_to_queue, track)
+        add_to_queue_button = Button(
+            'Add to queue', self.controller.add_to_queue, track)
         overlay_walker = urwid.SimpleListWalker([
             add_to_queue_button,
             play_button
@@ -127,36 +139,24 @@ class View(urwid.WidgetWrap):
         return overlay
 
     def main_window(self):
-        # Overlay
-        # self.overlay = self.track_options_overlay()
-
-        # Search results
-        self.search_results_walker = urwid.SimpleListWalker([])
-        search_results_list = urwid.ListBox(self.search_results_walker)
-        search_results_wrapper = urwid.LineBox(urwid.BoxAdapter(
-            search_results_list, MAX_ROWS - 6), title='Search results', title_align='left')
-
-        # Bottom
-        # play_button = urwid.Button('Play', self.on_click_play_button)
-        self.currently_playing = urwid.Text(('No track playing'))
-        self.player_state = urwid.Text((''))
-        # controls = urwid.GridFlow([
-        #     # pause_button,
-        #     play_button
-        # ], 9, 2, 0, 'left')
-        bottom = urwid.Columns([
-            ('fixed', 10, self.player_state),
-            self.currently_playing
-        ])
-        bottom = urwid.LineBox(
-            bottom, title='Player', title_align='left')
+        # Left
+        queue_list_walker = urwid.SimpleFocusListWalker([])
+        queue_list = urwid.ListBox(queue_list_walker)
+        left = urwid.LineBox(urwid.BoxAdapter(
+            queue_list, MAX_ROWS), title='Queue', title_align='left')
 
         # Right
         right = urwid.Pile(
-            [self.search_input(), search_results_wrapper, bottom])
+            [self.search_input(), self.search_results(), self.player()])
+
+        # Columns
+        columns = urwid.Columns([
+            ('weight', 1, left),
+            ('weight', 3, right)
+        ])
 
         # Main wrapper
-        w = urwid.Filler(right, valign='top')
+        w = urwid.Filler(columns, valign='top')
 
         return w
 

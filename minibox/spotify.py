@@ -10,6 +10,21 @@ os.environ['SPOTIPY_CLIENT_SECRET'] = 'b616d8d5858b4238a566aedb55c53926'
 os.environ['SPOTIPY_REDIRECT_URI'] = 'https://www.paulgiron.com'
 
 
+class Track():
+    def __init__(self, track):
+        if track.get('track'):
+            track = track['track']
+        else:
+            track = track
+        artists = []
+        for i, artist in enumerate(track['artists']):
+            artists.append(artist['name'])
+        self.artists = ', '.join(artists)
+        self.name = track['name']
+        self.uri = track['uri']
+        self.label = self.artists + ' - ' + self.name
+
+
 class Spotify():
     SCOPE = 'user-library-read,user-read-playback-state,streaming,user-modify-playback-state,user-read-currently-playing'
     # USERNAME = 'feuquibrule'
@@ -50,5 +65,10 @@ class Spotify():
 
     def search(self, search_value):
         results = self.sp.search(q='artist:' + search_value, limit=20, type='track')
-        # print(results['tracks']['items'])
-        return results['tracks']['items']
+        return self.parse_tracks(results['tracks']['items'])
+
+    def parse_tracks(self, tracks):
+        formatted_tracks = []
+        for i, track in enumerate(tracks):
+            formatted_tracks.append(Track(track))
+        return formatted_tracks

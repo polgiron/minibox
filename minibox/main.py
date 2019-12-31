@@ -19,7 +19,7 @@ class PlayerState(Enum):
 
 class Model:
     # results = []
-    # queue = []
+    queue = []
     player_state = PlayerState['PAUSED']
 
     def get_player_state(self):
@@ -56,20 +56,16 @@ class Button(urwid.WidgetWrap):
 class TrackListEntry():
     def __init__(self, controller, track):
         self.controller = controller
-        if track.get('track'):
-            track = track['track']
-        else:
-            track = track
-        artists = []
-        for i, artist in enumerate(track['artists']):
-            artists.append(artist['name'])
-        self.artists = ', '.join(artists)
-        self.name = track['name']
-        self.uri = track['uri']
-        self.label = self.artists + ' - ' + self.name
+        self.artists = track.artists
+        self.name = track.name
+        self.uri = track.uri
+        self.label = track.label
 
-    def button(self):
-        return Button(self.label, self.controller.on_track_click, self)
+    def search_results_button(self):
+        return Button(self.label, self.controller.on_track_results_click, self)
+
+    def queue_button(self):
+        return Button(self.label, self.controller.on_track_queue_click, self)
 
 
 class SearchInput(urwid.LineBox):
@@ -86,8 +82,9 @@ class View(urwid.WidgetWrap):
         ('reverted', 'black', 'white')
     ]
 
-    def __init__(self, controller):
+    def __init__(self, controller, model):
         self.controller = controller
+        self.model = model
         # self.search_input = SearchInput(urwid.Edit(
         #     ''), title='Search', title_align='left')
         urwid.WidgetWrap.__init__(self, self.main_window())
@@ -107,6 +104,13 @@ class View(urwid.WidgetWrap):
             search_results_list, MAX_ROWS - 6), title='Search results', title_align='left')
         return search_results_wrapper
 
+    def queue(self):
+        self.queue_list_walker = urwid.SimpleFocusListWalker([])
+        queue_list = urwid.ListBox(self.queue_list_walker)
+        queue = urwid.LineBox(urwid.BoxAdapter(
+            queue_list, MAX_ROWS), title='Queue', title_align='left')
+        return queue
+
     def player(self):
         self.currently_playing = urwid.Text(('No track playing'))
         self.player_state = urwid.Text((''))
@@ -121,37 +125,38 @@ class View(urwid.WidgetWrap):
         self.search_results_walker.clear()
         for i, track in enumerate(results):
             track_entry = TrackListEntry(self.controller, track)
-            self.search_results_walker.append(track_entry.button())
+            self.search_results_walker.append(
+                track_entry.search_results_button())
+
+    def update_queue(self):
+        self.queue_list_walker.clear()
+        for i, track in enumerate(self.model.queue):
+            self.queue_list_walker.append(track.queue_button())
 
     def track_options_overlay(self, track):
         play_button = Button('Play', self.controller.play, track)
         add_to_queue_button = Button(
             'Add to queue', self.controller.add_to_queue, track)
-        overlay_walker = urwid.SimpleListWalker([
+        cancel_button = Button(
+            'Cancel', self.controller.cancel, None)
+        overlay = urwid.Pile([
             add_to_queue_button,
-            play_button
+            play_button,
+            cancel_button
         ])
-        overlay_list = urwid.ListBox(overlay_walker)
-        overlay = urwid.LineBox(urwid.BoxAdapter(
-            overlay_list, 2), title='Track options', title_align='center')
+        overlay = urwid.LineBox(overlay, title='Track options', title_align='center')
         overlay = urwid.Overlay(
-            urwid.Filler(overlay), self, 'center', 20, 'middle', 4)
+            urwid.Filler(overlay), self, 'center', 20, 'middle', 5)
         return overlay
 
     def main_window(self):
-        # Left
-        queue_list_walker = urwid.SimpleFocusListWalker([])
-        queue_list = urwid.ListBox(queue_list_walker)
-        left = urwid.LineBox(urwid.BoxAdapter(
-            queue_list, MAX_ROWS), title='Queue', title_align='left')
-
         # Right
         right = urwid.Pile(
             [self.search_input(), self.search_results(), self.player()])
 
         # Columns
         columns = urwid.Columns([
-            ('weight', 1, left),
+            ('weight', 1, self.queue()),
             ('weight', 3, right)
         ])
 
@@ -164,7 +169,7 @@ class View(urwid.WidgetWrap):
 class Controller:
     def __init__(self):
         self.model = Model()
-        self.view = View(self)
+        self.view = View(self, self.model)
         self.update_player_state(PlayerState.PAUSED)
 
     def search(self, search_value):
@@ -178,9 +183,12 @@ class Controller:
     def update_currently_playing(self, label):
         self.view.currently_playing.set_text(label)
 
-    def on_track_click(self, track, button_instance):
+    def on_track_results_click(self, track, button_instance):
         overlay = self.view.track_options_overlay(track)
         self.loop.widget = overlay
+
+    def on_track_queue_click(self, track, button_instance):
+        print('click on track queue')
 
     def play(self, track, button_instance):
         self.update_currently_playing(track.label)
@@ -189,7 +197,12 @@ class Controller:
         self.loop.widget = self.view
 
     def add_to_queue(self, track, button_instance):
-        print('Add to queue: ' + track.uri)
+        # print('Add to queue: ' + track.uri)
+        self.model.queue.append(track)
+        self.view.update_queue()
+        self.loop.widget = self.view
+
+    def cancel(self, nothing, button_instance):
         self.loop.widget = self.view
 
     def unhandled_input(self, key):

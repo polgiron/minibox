@@ -7,10 +7,6 @@ max_rows, max_columns = os.popen('stty size', 'r').read().split()
 MAX_ROWS = int(max_rows) - 2
 MAX_COLUMNS = int(max_columns)
 
-# UPDATE_INTERVAL = 0.1
-
-sp = Spotify()
-
 
 class PlayerState(Enum):
     PAUSED = 1
@@ -51,21 +47,6 @@ class Button(urwid.WidgetWrap):
         if self._command_map[key] != urwid.ACTIVATE:
             return key
         self._emit('click')
-
-
-class TrackListEntry():
-    def __init__(self, controller, track):
-        self.controller = controller
-        self.artists = track.artists
-        self.name = track.name
-        self.uri = track.uri
-        self.label = track.label
-
-    def search_results_button(self):
-        return Button(self.label, self.controller.on_track_results_click, self)
-
-    def queue_button(self):
-        return Button(self.label, self.controller.on_track_queue_click, self)
 
 
 class SearchInput(urwid.LineBox):
@@ -124,24 +105,26 @@ class View(urwid.WidgetWrap):
     def update_search_results(self, results):
         self.search_results_walker.clear()
         for i, track in enumerate(results):
-            track_entry = TrackListEntry(self.controller, track)
-            self.search_results_walker.append(
-                track_entry.search_results_button())
+            track_entry = Button(
+                track.label, self.controller.on_track_results_click, track)
+            self.search_results_walker.append(track_entry)
 
     def update_queue(self):
         self.queue_list_walker.clear()
         for i, track in enumerate(self.model.queue):
-            self.queue_list_walker.append(track.queue_button())
+            track_entry = Button(
+                track.label, self.controller.on_track_queue_click, track)
+            self.queue_list_walker.append(track_entry)
 
     def track_options_overlay(self, track):
-        play_button = Button('Play', self.controller.play, track)
+        # play_button = Button('Play', self.controller.play, track)
         add_to_queue_button = Button(
             'Add to queue', self.controller.add_to_queue, track)
         cancel_button = Button(
             'Cancel', self.controller.cancel, None)
         overlay = urwid.Pile([
             add_to_queue_button,
-            play_button,
+            # play_button,
             cancel_button
         ])
         overlay = urwid.LineBox(overlay, title='Track options', title_align='center')
@@ -168,12 +151,14 @@ class View(urwid.WidgetWrap):
 
 class Controller:
     def __init__(self):
+        self.sp = Spotify()
+        self.sp.init()
         self.model = Model()
         self.view = View(self, self.model)
         self.update_player_state(PlayerState.PAUSED)
 
     def search(self, search_value):
-        results = sp.search(search_value)
+        results = self.sp.search(search_value)
         self.view.update_search_results(results)
 
     def update_player_state(self, state):
@@ -190,15 +175,21 @@ class Controller:
     def on_track_queue_click(self, track, button_instance):
         print('click on track queue')
 
-    def play(self, track, button_instance):
-        self.update_currently_playing(track.label)
-        sp.play(track.uri)
+    def play_queue(self):
+        self.update_currently_playing(self.model.queue[0].label)
+        self.sp.play()
         self.update_player_state(PlayerState.PLAYING)
         self.loop.widget = self.view
+
+    def play_next(self):
+        self.model.queue.pop(0)
+        self.update_currently_playing(self.model.queue[0].label)
+        self.sp.next()
 
     def add_to_queue(self, track, button_instance):
         # print('Add to queue: ' + track.uri)
         self.model.queue.append(track)
+        self.sp.add_to_queue(track)
         self.view.update_queue()
         self.loop.widget = self.view
 
@@ -208,6 +199,10 @@ class Controller:
     def unhandled_input(self, key):
         if key in ('q', 'Q'):
             raise urwid.ExitMainLoop()
+        if key in ('p', 'P'):
+            self.play_queue()
+        if key in ('n', 'N'):
+            self.play_next()
 
     def main(self):
         self.loop = urwid.MainLoop(
@@ -216,6 +211,4 @@ class Controller:
 
 
 def main():
-    sp.init()
-    # sp.get_devices()
     Controller().main()

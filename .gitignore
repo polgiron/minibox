@@ -11,3 +11,4 @@ venv/
 dist/
 minibox.egg-info/
 build/
+__pycache__/

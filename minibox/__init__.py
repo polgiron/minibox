@@ -1,1 +1,1 @@
-from .main import main
+from minibox.src.main import main

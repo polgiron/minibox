@@ -2,27 +2,14 @@ import os
 import spotipy
 import spotipy.util as util
 
+from minibox.src.spotify.track import Track
+
 os.environ['SPOTIPY_CLIENT_ID'] = 'dc87388fe36544c588442d914df545bf'
 os.environ['SPOTIPY_CLIENT_SECRET'] = 'b616d8d5858b4238a566aedb55c53926'
 os.environ['SPOTIPY_REDIRECT_URI'] = 'https://www.paulgiron.com'
 SCOPE = 'user-library-read,user-read-playback-state,streaming,user-modify-playback-state,user-read-currently-playing'
 USERNAME = 'alpaminibox@gmail.com'
 DEVICE_ID = 'd72a12fcf07eab86536b205938098bb285c1a3a7'
-
-
-class Track:
-    def __init__(self, track):
-        if track.get('track'):
-            track = track['track']
-        else:
-            track = track
-        artists = []
-        for i, artist in enumerate(track['artists']):
-            artists.append(artist['name'])
-        self.artists = ', '.join(artists)
-        self.name = track['name']
-        self.uri = track['uri']
-        self.label = self.artists + ' - ' + self.name
 
 
 class Spotify:

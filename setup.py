@@ -18,7 +18,7 @@ setup(
     ],
     entry_points={
         'console_scripts': [
-            ' minibox = minibox:main',
+            ' minibox = minibox.src:main',
         ],
     },
 )

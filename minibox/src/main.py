@@ -1,6 +1,6 @@
 import os
 import urwid
-from .spotify import Spotify
+from minibox.src.spotify.spotify import Spotify
 from enum import Enum
 
 max_rows, max_columns = os.popen('stty size', 'r').read().split()
@@ -48,7 +48,7 @@ class Button(urwid.WidgetWrap):
         self._emit('click')
 
 
-class TrackListEntry():
+class TrackListEntry:
     def __init__(self, controller, track):
         self.controller = controller
         self.artists = track.artists

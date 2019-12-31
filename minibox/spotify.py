@@ -25,14 +25,17 @@ class Track():
         self.label = self.artists + ' - ' + self.name
 
 
-class Spotify():
+def parse_tracks(tracks):
+    formatted_tracks = []
+    for i, track in enumerate(tracks):
+        formatted_tracks.append(Track(track))
+    return formatted_tracks
+
+
+class Spotify:
     SCOPE = 'user-library-read,user-read-playback-state,streaming,user-modify-playback-state,user-read-currently-playing'
-    # USERNAME = 'feuquibrule'
     USERNAME = 'alpaminibox@gmail.com'
     DEVICE_ID = '1670ecb14c549253cb5ac572c99706373b1712f9'
-
-    # def __init__(self):
-        # self.hello = 'Hello self'
 
     def init(self):
         print('Init spotify API...')
@@ -46,7 +49,6 @@ class Spotify():
 
     def get_devices(self):
         devices = self.sp.devices()
-        # print(devices['devices'])
         for i, device in enumerate(devices['devices']):
             # print('----------')
             print(device['name'] + ' - ' + device['id'])
@@ -65,10 +67,4 @@ class Spotify():
 
     def search(self, search_value):
         results = self.sp.search(q='artist:' + search_value, limit=20, type='track')
-        return self.parse_tracks(results['tracks']['items'])
-
-    def parse_tracks(self, tracks):
-        formatted_tracks = []
-        for i, track in enumerate(tracks):
-            formatted_tracks.append(Track(track))
-        return formatted_tracks
+        return parse_tracks(results['tracks']['items'])

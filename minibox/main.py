@@ -7,8 +7,6 @@ max_rows, max_columns = os.popen('stty size', 'r').read().split()
 MAX_ROWS = int(max_rows) - 2
 MAX_COLUMNS = int(max_columns)
 
-# UPDATE_INTERVAL = 0.1
-
 sp = Spotify()
 
 
@@ -18,7 +16,6 @@ class PlayerState(Enum):
 
 
 class Model:
-    # results = []
     queue = []
     player_state = PlayerState['PAUSED']
 
@@ -85,8 +82,6 @@ class View(urwid.WidgetWrap):
     def __init__(self, controller, model):
         self.controller = controller
         self.model = model
-        # self.search_input = SearchInput(urwid.Edit(
-        #     ''), title='Search', title_align='left')
         urwid.WidgetWrap.__init__(self, self.main_window())
 
     def on_search_input_keypress(self, search_input):
@@ -197,7 +192,6 @@ class Controller:
         self.loop.widget = self.view
 
     def add_to_queue(self, track, button_instance):
-        # print('Add to queue: ' + track.uri)
         self.model.queue.append(track)
         self.view.update_queue()
         self.loop.widget = self.view
@@ -217,5 +211,4 @@ class Controller:
 
 def main():
     sp.init()
-    # sp.get_devices()
     Controller().main()

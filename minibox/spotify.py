@@ -7,7 +7,8 @@ os.environ['SPOTIPY_CLIENT_SECRET'] = 'b616d8d5858b4238a566aedb55c53926'
 os.environ['SPOTIPY_REDIRECT_URI'] = 'https://www.paulgiron.com'
 SCOPE = 'user-library-read,user-read-playback-state,streaming,user-modify-playback-state,user-read-currently-playing'
 USERNAME = 'alpaminibox@gmail.com'
-DEVICE_ID = '1670ecb14c549253cb5ac572c99706373b1712f9'
+DEVICE_ID = 'd72a12fcf07eab86536b205938098bb285c1a3a7'
+
 
 class Track:
     def __init__(self, track):
@@ -39,13 +40,21 @@ class Spotify:
 
         if self.token:
             self.sp = spotipy.Spotify(auth=self.token)
-            if DEVICE_ID not in self.get_devices():
+
+            if not self.validate_device():
                 raise Exception('The device ' + DEVICE_ID + ' is unknown')
 
         else:
             print('Can\'t get token for', USERNAME)
 
-    def get_devices(self) -> [str]:
+    def validate_device(self):
+        devices = self.get_devices()
+        for device in devices:
+            if device['id'] == DEVICE_ID:
+                return True
+        return False
+
+    def get_devices(self) -> []:
         devices = self.sp.devices()
         for i, device in enumerate(devices['devices']):
             # print('----------')

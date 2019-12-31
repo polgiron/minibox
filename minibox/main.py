@@ -209,6 +209,5 @@ class Minibox:
 
 
 def main():
-    spotify_client = Spotify()
-    spotify_client.init()
+    spotify_client = Spotify.build()
     Minibox(spotify_client).start()

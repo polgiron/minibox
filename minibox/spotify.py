@@ -25,27 +25,25 @@ class Track:
         self.label = self.artists + ' - ' + self.name
 
 
-def parse_tracks(tracks):
-    formatted_tracks = []
-    for i, track in enumerate(tracks):
-        formatted_tracks.append(Track(track))
-    return formatted_tracks
-
-
 class Spotify:
 
-    def init(self):
+    def __init__(self, token, connection):
+        self.token = token
+        self.connection = connection
+
+    @staticmethod
+    def build():
         print('Init spotify API...')
-        self.token = util.prompt_for_user_token(USERNAME, SCOPE)
+        token = util.prompt_for_user_token(USERNAME, SCOPE)
+        connection = Spotify(token, spotipy.Spotify(auth=token))
 
-        if self.token:
-            self.sp = spotipy.Spotify(auth=self.token)
+        if not token:
+            raise Exception('Can\'t get token for ' + USERNAME)
 
-            if not self.validate_device():
-                raise Exception('The device ' + DEVICE_ID + ' is unknown')
+        if not connection.validate_device():
+            raise Exception('The device ' + DEVICE_ID + ' is unknown')
 
-        else:
-            print('Can\'t get token for', USERNAME)
+        return connection
 
     def validate_device(self):
         devices = self.get_devices()
@@ -55,23 +53,29 @@ class Spotify:
         return False
 
     def get_devices(self) -> []:
-        devices = self.sp.devices()
+        devices = self.connection.devices()
         for i, device in enumerate(devices['devices']):
-            # print('----------')
             print(device['name'] + ' - ' + device['id'])
         return devices['devices']
 
     def get_playlist_tracks(self):
         playlist_id = '4e9GyhFqo4N9yg2Y2mbo06'
-        tracks = self.sp.user_playlist_tracks('feuquibrule', playlist_id)
+        tracks = self.connection.user_playlist_tracks('feuquibrule', playlist_id)
         return tracks['items']
 
     def play(self, track_uri):
-        self.sp.start_playback(DEVICE_ID, None, [track_uri])
+        self.connection.start_playback(DEVICE_ID, None, [track_uri])
 
     def pause(self):
-        self.sp.pause_playback(DEVICE_ID)
+        self.connection.pause_playback(DEVICE_ID)
+
+    @staticmethod
+    def parse_tracks(tracks):
+        formatted_tracks = []
+        for i, track in enumerate(tracks):
+            formatted_tracks.append(Track(track))
+        return formatted_tracks
 
     def search(self, search_value):
-        results = self.sp.search(q='artist:' + search_value, limit=20, type='track')
-        return parse_tracks(results['tracks']['items'])
+        results = self.connection.search(q='artist:' + search_value, limit=20, type='track')
+        return self.parse_tracks(results['tracks']['items'])

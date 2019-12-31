@@ -7,8 +7,6 @@ max_rows, max_columns = os.popen('stty size', 'r').read().split()
 MAX_ROWS = int(max_rows) - 2
 MAX_COLUMNS = int(max_columns)
 
-sp = Spotify()
-
 
 class PlayerState(Enum):
     PAUSED = 1
@@ -161,14 +159,15 @@ class View(urwid.WidgetWrap):
         return w
 
 
-class Controller:
-    def __init__(self):
+class Minibox:
+    def __init__(self, spotify_client):
+        self.spotify_client = spotify_client
         self.model = Model()
         self.view = View(self, self.model)
         self.update_player_state(PlayerState.PAUSED)
 
     def search(self, search_value):
-        results = sp.search(search_value)
+        results = self.spotify_client.search(search_value)
         self.view.update_search_results(results)
 
     def update_player_state(self, state):
@@ -187,7 +186,7 @@ class Controller:
 
     def play(self, track, button_instance):
         self.update_currently_playing(track.label)
-        sp.play(track.uri)
+        self.spotify_client.play(track.uri)
         self.update_player_state(PlayerState.PLAYING)
         self.loop.widget = self.view
 
@@ -203,12 +202,13 @@ class Controller:
         if key in ('q', 'Q'):
             raise urwid.ExitMainLoop()
 
-    def main(self):
+    def start(self):
         self.loop = urwid.MainLoop(
             self.view, self.view.palette, unhandled_input=self.unhandled_input)
         self.loop.run()
 
 
 def main():
-    sp.init()
-    Controller().main()
+    spotify_client = Spotify()
+    spotify_client.init()
+    Minibox(spotify_client).start()

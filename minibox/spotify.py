@@ -75,6 +75,9 @@ class Spotify():
     def next(self):
         self.sp.next_track(self.DEVICE_ID)
 
+    def resume(self):
+        self.sp.start_playback(self.DEVICE_ID)
+
     def search(self, search_value):
         results = self.sp.search(q='artist:' + search_value, limit=20, type='track')
         return self.parse_tracks(results['tracks']['items'])

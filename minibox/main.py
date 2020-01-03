@@ -9,8 +9,9 @@ MAX_COLUMNS = int(max_columns)
 
 
 class PlayerState(Enum):
-    PAUSED = 1
-    PLAYING = 2
+    STOPPED = 1
+    PAUSED = 2
+    PLAYING = 3
 
 
 class Model:
@@ -129,7 +130,7 @@ class View(urwid.WidgetWrap):
         ])
         overlay = urwid.LineBox(overlay, title='Track options', title_align='center')
         overlay = urwid.Overlay(
-            urwid.Filler(overlay), self, 'center', 20, 'middle', 5)
+            urwid.Filler(overlay), self, 'center', 20, 'middle', 4)
         return overlay
 
     def main_window(self):
@@ -155,7 +156,7 @@ class Controller:
         self.sp.init()
         self.model = Model()
         self.view = View(self, self.model)
-        self.update_player_state(PlayerState.PAUSED)
+        self.update_player_state(PlayerState.STOPPED)
 
     def search(self, search_value):
         results = self.sp.search(search_value)
@@ -175,16 +176,18 @@ class Controller:
     def on_track_queue_click(self, track, button_instance):
         print('click on track queue')
 
-    def play_queue(self):
-        self.update_currently_playing(self.model.queue[0].label)
+    def play_track(self, track):
         self.sp.play()
+        self.update_currently_playing(track.label)
         self.update_player_state(PlayerState.PLAYING)
-        self.loop.widget = self.view
+        # self.loop.widget = self.view
 
     def play_next(self):
-        self.model.queue.pop(0)
-        self.update_currently_playing(self.model.queue[0].label)
-        self.sp.next()
+        if len(self.model.queue) > 1:
+            self.sp.next()
+            self.model.queue.pop(0)
+            self.view.update_queue()
+            self.update_currently_playing(self.model.queue[0].label)
 
     def add_to_queue(self, track, button_instance):
         # print('Add to queue: ' + track.uri)
@@ -196,11 +199,21 @@ class Controller:
     def cancel(self, nothing, button_instance):
         self.loop.widget = self.view
 
+    def on_play_pause_button(self):
+        if self.model.player_state == PlayerState.STOPPED and len(self.model.queue) > 0:
+            self.play_track(self.model.queue[0])
+        elif self.model.player_state == PlayerState.PLAYING:
+            self.sp.pause()
+            self.update_player_state(PlayerState.PAUSED)
+        elif self.model.player_state == PlayerState.PAUSED:
+            self.sp.resume()
+            self.update_player_state(PlayerState.PLAYING)
+
     def unhandled_input(self, key):
         if key in ('q', 'Q'):
             raise urwid.ExitMainLoop()
         if key in ('p', 'P'):
-            self.play_queue()
+            self.on_play_pause_button()
         if key in ('n', 'N'):
             self.play_next()
 

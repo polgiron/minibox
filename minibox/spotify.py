@@ -25,6 +25,7 @@ class Track():
         self.name = track['name']
         self.uri = track['uri']
         self.label = self.artists + ' - ' + self.name
+        self.duration = math.floor(track['duration_ms'] / 1000)
 
 
 class Spotify():

@@ -194,6 +194,7 @@ class Controller:
         self.utils = Utils()
         self.view = View(self, self.model)
         self.timer = None
+        self.seconds_timer = None
         self.update_player_state(PlayerState.STOPPED)
 
     def search(self, search_value):
@@ -213,6 +214,7 @@ class Controller:
 
     def on_next_button(self):
         if len(self.model.queue) > 1:
+            self.model.current_progress = 0
             self.sp.next()
             self.model.queue.pop(0)
             self.view.update_queue()
@@ -229,24 +231,28 @@ class Controller:
 
     def update_current_track_ui(self, track):
         self.view.currently_playing.set_text(track.label)
-        print(track.duration)
-        # self.utils.format_time(track.duration)
         self.view.current_track_duration.set_text(self.utils.format_time(track.duration))
 
     def on_play_pause_button(self):
         if self.model.player_state == PlayerState.STOPPED and len(self.model.queue) > 0:
+            print('PLAY')
             self.sp.play()
             self.update_current_track_ui(self.model.queue[0])
             self.update_player_state(PlayerState.PLAYING)
-            self.start_timer()
+            # self.start_timer()
+            self.start_seconds_timer()
         elif self.model.player_state == PlayerState.PLAYING:
+            print('PAUSE')
             self.sp.pause()
             self.update_player_state(PlayerState.PAUSED)
-            self.stop_timer()
+            # self.stop_timer()
+            self.stop_seconds_timer()
         elif self.model.player_state == PlayerState.PAUSED:
+            print('RESUME')
             self.sp.resume()
             self.update_player_state(PlayerState.PLAYING)
-            self.start_timer()
+            # self.start_timer()
+            self.start_seconds_timer()
 
     def unhandled_input(self, key):
         if key in ('q', 'Q'):
@@ -256,16 +262,27 @@ class Controller:
         if key in ('n', 'N'):
             self.on_next_button()
 
-    def start_timer(self, loop=None, user_data=None):
+    def start_seconds_timer(self, loop=None, user_data=None):
         self.model.current_progress += 1
-        self.view.update_progress(self.model.current_progress)
-        self.timer = self.loop.set_alarm_in(
-            UPDATE_INTERVAL, self.start_timer)
+        self.view.current_track_progress.set_text(
+            self.utils.format_time(self.model.current_progress))
+        self.seconds_timer = self.loop.set_alarm_in(1, self.start_seconds_timer)
 
-    def stop_timer(self):
-        if self.timer:
-            self.loop.remove_alarm(self.timer)
-        self.timer = None
+    # def start_timer(self, loop=None, user_data=None):
+    #     self.model.current_progress += 1
+    #     self.view.update_progress(self.model.current_progress)
+    #     self.timer = self.loop.set_alarm_in(
+    #         UPDATE_INTERVAL, self.start_timer)
+
+    def stop_seconds_timer(self):
+        if self.seconds_timer:
+            self.loop.remove_alarm(self.seconds_timer)
+        self.seconds_timer = None
+
+    # def stop_timer(self):
+    #     if self.timer:
+    #         self.loop.remove_alarm(self.timer)
+    #     self.timer = None
 
     def main(self):
         self.loop = urwid.MainLoop(

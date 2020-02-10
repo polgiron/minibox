@@ -33,6 +33,7 @@ class Model:
     # results = []
     queue = []
     player_state = PlayerState['PAUSED']
+    current_track = None
     current_progress = 0
 
     # def get_player_state(self):
@@ -78,8 +79,8 @@ class SearchInput(urwid.LineBox):
 class View(urwid.WidgetWrap):
     palette = [
         ('reverted', 'black', 'white'),
-        ('pg normal', 'white', 'black', 'standout'),
-        ('pg complete', 'white', 'dark magenta')
+        ('pg normal', 'black', 'black'),
+        ('pg complete', 'white', 'white')
     ]
 
     def __init__(self, controller, model):
@@ -110,13 +111,13 @@ class View(urwid.WidgetWrap):
         return queue
 
     def player(self):
-        self.player_state = urwid.Text((''))
+        # self.player_state = urwid.Text((''))
         self.currently_playing = urwid.Text(('No track playing'))
         self.current_track_progress = urwid.Text(('00:00'))
         self.current_track_duration = urwid.Text(('00:00'))
         self.progress = urwid.ProgressBar('pg normal', 'pg complete', 0, 10000)
         player = urwid.Columns([
-            ('fixed', 10, self.player_state),
+            # ('fixed', 10, self.player_state),
             urwid.Pile([
                 urwid.Columns([
                     ('fixed', 5, self.current_track_progress),
@@ -132,7 +133,8 @@ class View(urwid.WidgetWrap):
         return player
     
     def update_progress(self, value):
-        self.progress.set_completion(value)
+        self.progress.set_completion(
+            value * 10000 / self.model.current_track.duration)
         # self.progress.render((1, ))
 
     def update_search_results(self, results):
@@ -203,7 +205,7 @@ class Controller:
 
     def update_player_state(self, state):
         self.model.player_state = state
-        self.view.player_state.set_text(state.name)
+        # self.view.player_state.set_text(state.name)
 
     def on_track_results_click(self, track, button_instance):
         overlay = self.view.track_options_overlay(track)
@@ -235,28 +237,29 @@ class Controller:
 
     def on_play_pause_button(self):
         if self.model.player_state == PlayerState.STOPPED and len(self.model.queue) > 0:
-            print('PLAY')
+            # print('PLAY')
             self.sp.play()
-            self.update_current_track_ui(self.model.queue[0])
+            self.model.current_track = self.model.queue[0]
+            self.update_current_track_ui(self.model.current_track)
             self.update_player_state(PlayerState.PLAYING)
             # self.start_timer()
             self.start_seconds_timer()
         elif self.model.player_state == PlayerState.PLAYING:
-            print('PAUSE')
+            # print('PAUSE')
             self.sp.pause()
             self.update_player_state(PlayerState.PAUSED)
             # self.stop_timer()
             self.stop_seconds_timer()
         elif self.model.player_state == PlayerState.PAUSED:
-            print('RESUME')
+            # print('RESUME')
             self.sp.resume()
             self.update_player_state(PlayerState.PLAYING)
             # self.start_timer()
             self.start_seconds_timer()
 
     def unhandled_input(self, key):
-        if key in ('q', 'Q'):
-            raise urwid.ExitMainLoop()
+        # if key in ('q', 'Q'):
+            # raise urwid.ExitMainLoop()
         if key in ('p', 'P'):
             self.on_play_pause_button()
         if key in ('n', 'N'):
@@ -266,6 +269,7 @@ class Controller:
         self.model.current_progress += 1
         self.view.current_track_progress.set_text(
             self.utils.format_time(self.model.current_progress))
+        self.view.update_progress(self.model.current_progress)
         self.seconds_timer = self.loop.set_alarm_in(1, self.start_seconds_timer)
 
     # def start_timer(self, loop=None, user_data=None):

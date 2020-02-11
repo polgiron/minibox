@@ -85,6 +85,8 @@ class Controller():
             self.on_play_pause_button()
         if key in ('n', 'N'):
             self.on_next_button()
+        if key in ('o', 'O'):
+            self.view.switch_page()
 
     def start_seconds_timer(self, loop=None, user_data=None):
         self.model.current_progress += 1

@@ -31,6 +31,7 @@ class Button(urwid.WidgetWrap):
         self._emit('click')
 
 
+# class SearchInput(urwid.LineBox):
 class SearchInput(urwid.LineBox):
     signals = ['enter']
 
@@ -56,15 +57,18 @@ class View(urwid.WidgetWrap):
         self.controller.search(search_input.original_widget.edit_text)
 
     def search_input(self):
-        w = SearchInput(urwid.Edit(''), title='Search', title_align='left')
+        # w = SearchInput(urwid.Edit('', wrap='clip'), title='Search', title_align='left')
+        w = SearchInput(urwid.Edit('', wrap='clip'))
         urwid.connect_signal(w, 'enter', self.on_search_input_keypress)
         return w
 
     def search_results(self):
         self.search_results_walker = urwid.SimpleListWalker([])
         search_results_list = urwid.ListBox(self.search_results_walker)
-        search_results_wrapper = urwid.LineBox(urwid.BoxAdapter(
-            search_results_list, MAX_ROWS - 7), title='Search results', title_align='left')
+        # search_results_wrapper = urwid.LineBox(urwid.BoxAdapter(
+        #     search_results_list, MAX_ROWS - 7), title='Search results', title_align='left')
+        search_results_wrapper = urwid.BoxAdapter(
+            search_results_list, MAX_ROWS - 4)
         return search_results_wrapper
 
     def queue(self):
@@ -83,6 +87,7 @@ class View(urwid.WidgetWrap):
         player = urwid.Columns([
             # ('fixed', 10, self.player_state),
             urwid.Pile([
+                urwid.Divider('―'),
                 urwid.Columns([
                     ('fixed', 5, self.current_track_progress),
                     ('fixed', 1, urwid.Text('/')),
@@ -93,7 +98,8 @@ class View(urwid.WidgetWrap):
                 self.progress
             ])
         ])
-        player = urwid.LineBox(player, title='Player', title_align='left')
+        # player = urwid.LineBox(player, title='Player', title_align='left')
+        # player = urwid.LineBox(player)
         return player
 
     def update_progress(self, value):
@@ -133,20 +139,20 @@ class View(urwid.WidgetWrap):
         return overlay
 
     def main_window(self):
-        # Right
-        right = urwid.Pile([
+        # Layout
+        layout = urwid.Pile([
             self.search_input(),
             self.search_results(),
             self.player()
         ])
 
         # Columns
-        columns = urwid.Columns([
-            ('weight', 1, self.queue()),
-            ('weight', 3, right)
-        ])
+        # columns = urwid.Columns([
+        #     ('weight', 1, self.queue()),
+        #     ('weight', 3, right)
+        # ])
 
         # Main wrapper
-        w = urwid.Filler(columns, valign='top')
+        w = urwid.Filler(layout, valign='top')
 
         return w
